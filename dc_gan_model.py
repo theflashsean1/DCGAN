@@ -140,6 +140,7 @@ class DCGAN(object):
     @property
     def summary_op(self):
         if self._summary_op is None:
+            # TODO
             tf.summary.histogram('D_FAKE', self.d_fake_output)
             tf.summary.histogram('D_REAL', self.d_real_output)
 

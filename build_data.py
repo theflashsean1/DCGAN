@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 
 FLAGS = tf.flags.FLAGS
 
-tf.flags.DEFINE_string('dota2_heroes_dir', 'dota2heroes/59x33', 'heroes image dir')
+tf.flags.DEFINE_string('dota2_heroes_dir', 'dota2heroes/256x144', 'heroes image dir')
 tf.flags.DEFINE_string('dota2_data', 'dota2_data', 'Output tfrecord files')
 
 
@@ -57,7 +57,7 @@ def convert_to_tfrecord(image_paths, output_dir, record_name):
     return record_path
 
 
-def read_and_decode(filename_queue):
+def read_and_decode(filename_queue, batch_size):
     reader = tf.TFRecordReader()
     _, serialized_example = reader.read(filename_queue)
 
@@ -79,7 +79,7 @@ def read_and_decode(filename_queue):
     width = tf.cast(features['width'], tf.int32)
     channel = tf.cast(features['channel'], tf.int32)
 
-    image_shape = tf.stack([33, 59, 3])
+    image_shape = tf.stack([144, 256, 3])
     image = tf.reshape(image, image_shape)
     # image = tf.image.resize_image_with_crop_or_pad(image, 33, 59)
 
@@ -87,21 +87,23 @@ def read_and_decode(filename_queue):
 
     images = tf.train.shuffle_batch(
         [image],
-        batch_size=2,
+        batch_size=batch_size,
         capacity=30,
         num_threads=2,
         min_after_dequeue=10
     )
-    return images, height, width, channel, image
+    return images
 
 
 def main(_):
     tfrecord_path = convert_to_tfrecord(read_images_dir(FLAGS.dota2_heroes_dir),
                                         FLAGS.dota2_data, 'heroes_images')
+    # tfrecord_path = "dota2_data/heroes_images.tfrecords"
+    exit()
     filename_queue = tf.train.string_input_producer(
         string_tensor=[tfrecord_path], num_epochs=10
     )
-    images = read_and_decode(filename_queue)
+    images = read_and_decode(filename_queue, batch_size=2)
     init_op = tf.group(tf.global_variables_initializer(),
                        tf.local_variables_initializer())
     with tf.Session() as sess:
@@ -111,10 +113,7 @@ def main(_):
 
         for i in range(3):
             print(i)
-            img,height, width, channel, image = sess.run(images)
-            print(height)
-            print(width)
-            print(channel)
+            img = sess.run(images)
             print(img[0, :, :, :].shape)
 
             print('current batch')

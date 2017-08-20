@@ -15,12 +15,13 @@ class DCGAN(object):
                  ngf=512,
                  ndf=64,
                  is_training=True,
-                 learning_rate=2e-4,
+                 g_learning_rate=2e-4,
+                 d_learning_rate=2e-4
                  ):
         # Private member vars
         self._batch_size = batch_size
-        self._learning_rate = learning_rate
-
+        self._g_learning_rate = g_learning_rate
+        self._d_learning_rate = d_learning_rate
         self._z = tf.placeholder(tf.float32, [batch_size, z_dim], name='z')
         self._input_imgs = tf.placeholder(
             tf.float32,
@@ -35,6 +36,7 @@ class DCGAN(object):
         self._G = Generator(is_training=is_training,
                             output_img_height=output_img_height,
                             output_img_width=output_img_width,
+                            output_img_channel=num_channels,
                             ngf=ngf,
                             )
 
@@ -122,7 +124,7 @@ class DCGAN(object):
     @property
     def g_optimizer(self):
         if self._g_optimizer is None:
-            self._g_optimizer = tf.train.AdamOptimizer(self._learning_rate).minimize(
+            self._g_optimizer = tf.train.AdamOptimizer(self._g_learning_rate).minimize(
                 loss=self.g_loss,
                 var_list=self._G.variables
             )
@@ -131,7 +133,7 @@ class DCGAN(object):
     @property
     def d_optimizer(self):
         if self._d_optimizer is None:
-            self._d_optimizer = tf.train.AdamOptimizer(self._learning_rate/150.0).minimize(
+            self._d_optimizer = tf.train.AdamOptimizer(self._d_learning_rate).minimize(
                 loss=self.d_loss_real + self.d_loss_fake,
                 var_list=self._D.variables
             )

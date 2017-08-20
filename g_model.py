@@ -3,11 +3,12 @@ import ops
 
 
 class Generator:
-    def __init__(self, is_training, output_img_height, output_img_width, ngf=512, name='generator'):
+    def __init__(self, is_training, output_img_height, output_img_width, output_img_channel, ngf=512, name='generator'):
         self._name = name
         self._is_training = is_training
         self._output_img_height = output_img_height
         self._output_img_width = output_img_width
+        self._output_img_channel = output_img_channel
         self._reuse = False
         self._ngf = ngf
         self._variables = None
@@ -54,7 +55,7 @@ class Generator:
                 )
             )
             h4 = tf.nn.tanh(
-                ops.deconv2d(h3, 1, reuse=self._reuse, name='g_conv4')
+                ops.deconv2d(h3, self._output_img_channel, reuse=self._reuse, name='g_conv4')
             )
         self._reuse = True
         return h4

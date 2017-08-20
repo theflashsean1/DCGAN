@@ -9,23 +9,24 @@ import matplotlib.gridspec as gridspec
 
 FLAGS = tf.flags.FLAGS
 
-tf.flags.DEFINE_integer('batch_size', 20, 'batch_size: default:100')
-tf.flags.DEFINE_string('image_size_type', 'large', 'image_size_type: default: large')
-tf.flags.DEFINE_integer('image_channel', 1, 'image_channel: default:3')
+tf.flags.DEFINE_integer('batch_size', 64, 'batch_size: default:100')
+tf.flags.DEFINE_integer('plot_num_rows', 8, 'number of rows displayed in plot')
+tf.flags.DEFINE_string('image_dims', 'dota2_large', 'image_size_type: default: large')
 tf.flags.DEFINE_integer('z_dim', 100, 'z_dim: default:100')
-tf.flags.DEFINE_float('learning_rate', 2e-4, 'learning rate: default:2e-4')
+tf.flags.DEFINE_float('g_learning_rate', 2e-4, 'learning rate: default:2e-4')
+tf.flags.DEFINE_float('d_learning_rate', 2e-4, 'learning rate: default:2e-4')
 tf.flags.DEFINE_integer('ngf', 512, 'number of gen filters in first conv layer')
 tf.flags.DEFINE_integer('ndf', 64, 'number of dis filters in first conv layer')
 tf.flags.DEFINE_string('data_path', 'dota2_data/heroes_images.tfrecords', 'Directory for storing input data')
 tf.flags.DEFINE_string('load_model', None, 'folder of saved model that you wish to continue training '
                                            '(e.g. 20170602-1936), default=None')
-tf.flags.DEFINE_integer('max_num_steps', 2000, 'Number of steps to train')
-tf.flags.DEFINE_integer('num_steps_run', 200, 'Number of steps to run per this script call')
+tf.flags.DEFINE_integer('sample_interval', 50, 'plot intermediate results')
 
 IMG_SIZE_MAP = {
-    'small': (33, 59),
-    'medium': (115, 205),
-    'large': (144, 256)
+    'dota_small': (33, 59, 1),
+    'dota_medium': (115, 205, 1),
+    'dota_large': (144, 256, 1),
+    'celebrity': (108, 108, 3)
 }
 
 
@@ -40,15 +41,17 @@ def main(_):
         except os.error:
             pass
 
-    img_height, img_width = (32, 64)#IMG_SIZE_MAP[FLAGS.image_size_type]
+    plot_num_rows, plot_num_cols = FLAGS.plot_num_rows, FLAGS.batch_size/FLAGS.plot_num_rows
+    img_height, img_width, img_channel = IMG_SIZE_MAP[FLAGS.image_dims]
     graph = tf.Graph()
     with graph.as_default():
         print(FLAGS.data_path)
         print(os.path.exists(FLAGS.data_path))
         filename_queue = tf.train.string_input_producer(
-            string_tensor=[FLAGS.data_path], num_epochs=1000
+            string_tensor=[FLAGS.data_path], num_epochs=10
         )
-        input_images = read_and_decode(filename_queue, batch_size=FLAGS.batch_size)
+        input_images = read_and_decode(filename_queue, batch_size=FLAGS.batch_size,
+                                       height=img_height, width=img_width, channel=img_channel)
 
         dcgan = DCGAN(
             batch_size=FLAGS.batch_size,
@@ -60,7 +63,8 @@ def main(_):
             num_channels=FLAGS.image_channel,
             ngf=FLAGS.ngf,
             ndf=FLAGS.ndf,
-            learning_rate=FLAGS.learning_rate
+            g_learning_rate=FLAGS.g_learning_rate,
+            d_learning_rate=FLAGS.d_learning_rate
         )
         generated_imgs = dcgan.g_output
         d_out_real = dcgan.d_real_output
@@ -91,7 +95,6 @@ def main(_):
 
                 batch_images = sess.run(input_images)
 
-
                 _, _, g_loss_val, d_loss_real_val, d_loss_fake_val, d_out_real_val, d_out_fake_val, summary = \
                 sess.run(
                     fetches=[g_optimizer, d_optimizer, g_loss, d_loss_real, d_loss_fake, d_out_real, d_out_fake, summary_op],
@@ -102,12 +105,13 @@ def main(_):
                 )
                 train_writer.add_summary(summary, step)
                 train_writer.flush()
-                if step % 40 == 0:
+                if step % FLAGS.sample_interval == 0:
+                    """
                     fig = _plot(z, 1, FLAGS.z_dim)
                     plt.savefig('{}/z_{}.png'.format(checkpoints_dir, str(step).zfill(3)), bbox_inches='tight')
                     plt.close(fig)
-
-                    fig = _plot(batch_images, 32, 64)
+                    """
+                    fig = _plot(batch_images, plot_num_rows, plot_num_cols, img_height, img_width, img_channel)
                     plt.savefig('{}/input_{}.png'.format(checkpoints_dir, str(step).zfill(3)), bbox_inches='tight')
                     plt.close(fig)
                     print('----------Step %d: ----------' % step)
@@ -124,7 +128,7 @@ def main(_):
                             dcgan.z_placeholder: z
                         }
                     )
-                    fig = _plot(g_z, 32, 64)
+                    fig = _plot(g_z, plot_num_rows, plot_num_cols, img_height, img_width, img_channel)
                     plt.savefig('{}/{}.png'.format(checkpoints_dir, str(step).zfill(3)), bbox_inches='tight')
                     plt.close(fig)
 
@@ -140,9 +144,9 @@ def main(_):
             coord.join(threads)
 
 
-def _plot(samples, height, width):
-    fig = plt.figure(figsize=(5, 4))
-    gs = gridspec.GridSpec(5, 4)
+def _plot(samples, num_rows, num_cols, height, width, channel):
+    fig = plt.figure(figsize=(num_rows, num_cols))
+    gs = gridspec.GridSpec(num_rows, num_cols)
     gs.update(wspace=0.05, hspace=0.05)
 
     for i, sample in enumerate(samples):
@@ -151,7 +155,12 @@ def _plot(samples, height, width):
         ax.set_xticklabels([])
         ax.set_yticklabels([])
         ax.set_aspect('equal')
-        plt.imshow(sample.reshape([height, width]), cmap='Greys_r')
+        if channel == 1:
+            plt.imshow(sample.reshape([height, width]), cmap='Greys_r')
+        elif channel == 3:
+            plt.imshow(sample)
+        else:
+            raise AttributeError("{} channel not allowed".format(channel))
     return fig
 
 

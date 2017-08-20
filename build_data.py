@@ -8,12 +8,12 @@ import matplotlib.pyplot as plt
 
 FLAGS = tf.flags.FLAGS
 
-tf.flags.DEFINE_string('dota2_heroes_dir', 'dota2heroes/256x144', 'heroes image dir')
-tf.flags.DEFINE_string('dota2_data', 'dota2_data', 'Output tfrecord files')
+tf.flags.DEFINE_string('raw_data_dir', 'dota2heroes/256x144', 'heroes image dir')
+tf.flags.DEFINE_string('tfrecord_data_dir', 'dota2_data', 'Output tfrecord files')
 
 
 def read_images_dir(input_dir, shuffle=True):
-    image_paths = [img_f for img_f in os.listdir(input_dir) if (img_f.endswith('.png'))]
+    image_paths = [img_f for img_f in os.listdir(input_dir) if (img_f.endswith('.png') or img_f.endswith('.jpg'))]
     if shuffle:
         shuffled_index = list(range(len(image_paths)))
         random.seed(12345)
@@ -31,7 +31,7 @@ def _int64_feature(value):
     return tf.train.Feature(int64_list=tf.train.Int64List(value=[value]))
 
 
-def convert_to_tfrecord(image_paths, output_dir, record_name):
+def convert_to_tfrecord(image_paths, output_dir, record_name, num_channel):
     record_path = os.path.join(output_dir, record_name + ".tfrecords")
     if not os.path.exists(output_dir):
         os.makedirs(output_dir)
@@ -40,15 +40,10 @@ def convert_to_tfrecord(image_paths, output_dir, record_name):
         temp = Image.open(path)
         img = np.array(temp)
         height, width, channel = img.shape
-        #if channel == 4:
-        #    img = img[:, :, :1]
-        img = img[:, :, :1]
+        img = img[:, :, :num_channel]
         example = tf.train.Example(
             features=tf.train.Features(
                 feature={
-                    'height': _int64_feature(height),
-                    'width': _int64_feature(width),
-                    'channel': _int64_feature(channel),
                     'image': _bytes_feature(img.tostring()),
                 }
             )
@@ -58,7 +53,7 @@ def convert_to_tfrecord(image_paths, output_dir, record_name):
     return record_path
 
 
-def read_and_decode(filename_queue, batch_size):
+def read_and_decode(filename_queue, batch_size, height, width, channel, min_after_dequeue=100):
     reader = tf.TFRecordReader()
     _, serialized_example = reader.read(filename_queue)
 
@@ -76,35 +71,31 @@ def read_and_decode(filename_queue, batch_size):
     # [mnist.IMAGE_PIXELS].
     image = tf.decode_raw(features['image'], tf.uint8)
 
-    height = tf.cast(features['height'], tf.int32)
-    width = tf.cast(features['width'], tf.int32)
-    channel = tf.cast(features['channel'], tf.int32)
-
-    image_shape = tf.stack([144, 256, 1])
+    image_shape = tf.stack([height, width, channel])
     image = tf.reshape(image, image_shape)
     # image = tf.image.resize_image_with_crop_or_pad(image, 33, 59)
-    image = tf.image.resize_images(image, [32, 64])
+    # image = tf.image.resize_images(image, [32, 64])
     # image_size_const = tf.constant([33, 59, 3], dtype=tf.int32)
 
     images = tf.train.shuffle_batch(
         [image],
         batch_size=batch_size,
-        capacity=30,
+        capacity=min_after_dequeue + 3*batch_size,
         num_threads=2,
-        min_after_dequeue=10
+        min_after_dequeue=min_after_dequeue
     )
     return images
 
 
 def main(_):
-    tfrecord_path = convert_to_tfrecord(read_images_dir(FLAGS.dota2_heroes_dir),
-                                        FLAGS.dota2_data, 'heroes_images')
+    tfrecord_path = convert_to_tfrecord(read_images_dir(FLAGS.raw_data_dir),
+                                        FLAGS.tfrecord_data_dir, 'heroes_images')
     # tfrecord_path = "dota2_data/heroes_images.tfrecords"
     exit()
     filename_queue = tf.train.string_input_producer(
         string_tensor=[tfrecord_path], num_epochs=10
     )
-    images = read_and_decode(filename_queue, batch_size=2)
+    images = read_and_decode(filename_queue, batch_size=2, height=32, width=32, channel=3)
     init_op = tf.group(tf.global_variables_initializer(),
                        tf.local_variables_initializer())
     with tf.Session() as sess:

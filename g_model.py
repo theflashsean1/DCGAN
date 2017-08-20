@@ -54,7 +54,7 @@ class Generator:
                 )
             )
             h4 = tf.nn.tanh(
-                ops.deconv2d(h3, 3, reuse=self._reuse, name='g_conv4')
+                ops.deconv2d(h3, 1, reuse=self._reuse, name='g_conv4')
             )
         self._reuse = True
         return h4

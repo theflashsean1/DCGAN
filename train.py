@@ -11,7 +11,7 @@ FLAGS = tf.flags.FLAGS
 
 tf.flags.DEFINE_integer('batch_size', 20, 'batch_size: default:100')
 tf.flags.DEFINE_string('image_size_type', 'large', 'image_size_type: default: large')
-tf.flags.DEFINE_integer('image_channel', 3, 'image_channel: default:3')
+tf.flags.DEFINE_integer('image_channel', 1, 'image_channel: default:3')
 tf.flags.DEFINE_integer('z_dim', 100, 'z_dim: default:100')
 tf.flags.DEFINE_float('learning_rate', 2e-4, 'learning rate: default:2e-4')
 tf.flags.DEFINE_integer('ngf', 512, 'number of gen filters in first conv layer')
@@ -40,7 +40,7 @@ def main(_):
         except os.error:
             pass
 
-    img_height, img_width = IMG_SIZE_MAP[FLAGS.image_size_type]
+    img_height, img_width = (32, 64)#IMG_SIZE_MAP[FLAGS.image_size_type]
     graph = tf.Graph()
     with graph.as_default():
         print(FLAGS.data_path)
@@ -63,6 +63,8 @@ def main(_):
             learning_rate=FLAGS.learning_rate
         )
         generated_imgs = dcgan.g_output
+        d_out_real = dcgan.d_real_output
+        d_out_fake = dcgan.d_fake_output
         g_loss, d_loss_real, d_loss_fake = dcgan.g_loss, dcgan.d_loss_real, dcgan.d_loss_fake
         g_optimizer, d_optimizer = dcgan.g_optimizer, dcgan.d_optimizer
 
@@ -86,9 +88,13 @@ def main(_):
         try:
             while not coord.should_stop():
                 z = np.random.uniform(-1, 1, [FLAGS.batch_size, FLAGS.z_dim]).astype(np.float32)
+
                 batch_images = sess.run(input_images)
-                _, _, g_loss_val, d_loss_real_val, d_loss_fake_val, summary = sess.run(
-                    fetches=[g_optimizer, d_optimizer, g_loss, d_loss_real, d_loss_fake, summary_op],
+
+
+                _, _, g_loss_val, d_loss_real_val, d_loss_fake_val, d_out_real_val, d_out_fake_val, summary = \
+                sess.run(
+                    fetches=[g_optimizer, d_optimizer, g_loss, d_loss_real, d_loss_fake, d_out_real, d_out_fake, summary_op],
                     feed_dict={
                         dcgan.input_placeholder: batch_images,
                         dcgan.z_placeholder: z
@@ -96,23 +102,32 @@ def main(_):
                 )
                 train_writer.add_summary(summary, step)
                 train_writer.flush()
-                if step % 5 == 0:
+                if step % 40 == 0:
+                    fig = _plot(z, 1, FLAGS.z_dim)
+                    plt.savefig('{}/z_{}.png'.format(checkpoints_dir, str(step).zfill(3)), bbox_inches='tight')
+                    plt.close(fig)
+
+                    fig = _plot(batch_images, 32, 64)
+                    plt.savefig('{}/input_{}.png'.format(checkpoints_dir, str(step).zfill(3)), bbox_inches='tight')
+                    plt.close(fig)
                     print('----------Step %d: ----------' % step)
+                    print('D_real_out: {}'.format(d_out_real_val))
+                    print('D_fake_out: {}'.format(d_out_fake_val))
                     print('G_loss: {}'.format(g_loss_val))
                     print('D(G(Z))_loss: {}'.format(d_loss_fake_val))
                     print('D(x)_LOSS: {}'.format(d_loss_real_val))
                     print('----------Sample img---------')
-                    """
+
                     g_z = sess.run(
                         fetches=generated_imgs,
                         feed_dict={
                             dcgan.z_placeholder: z
                         }
                     )
-                    fig = _plot(g_z)
+                    fig = _plot(g_z, 32, 64)
                     plt.savefig('{}/{}.png'.format(checkpoints_dir, str(step).zfill(3)), bbox_inches='tight')
                     plt.close(fig)
-                    """
+
                 step += 1
         except KeyboardInterrupt:
             # save_path = saver.save(sess, checkpoints_dir + "/model.ckpt", global_step=step)
@@ -125,7 +140,7 @@ def main(_):
             coord.join(threads)
 
 
-def _plot(samples):
+def _plot(samples, height, width):
     fig = plt.figure(figsize=(5, 4))
     gs = gridspec.GridSpec(5, 4)
     gs.update(wspace=0.05, hspace=0.05)
@@ -136,7 +151,7 @@ def _plot(samples):
         ax.set_xticklabels([])
         ax.set_yticklabels([])
         ax.set_aspect('equal')
-        plt.imshow(sample)
+        plt.imshow(sample.reshape([height, width]), cmap='Greys_r')
     return fig
 
 

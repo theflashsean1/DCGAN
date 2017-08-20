@@ -131,7 +131,7 @@ class DCGAN(object):
     @property
     def d_optimizer(self):
         if self._d_optimizer is None:
-            self._d_optimizer = tf.train.AdamOptimizer(self._learning_rate).minimize(
+            self._d_optimizer = tf.train.AdamOptimizer(self._learning_rate/150.0).minimize(
                 loss=self.d_loss_real + self.d_loss_fake,
                 var_list=self._D.variables
             )

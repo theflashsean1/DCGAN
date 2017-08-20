@@ -40,8 +40,9 @@ def convert_to_tfrecord(image_paths, output_dir, record_name):
         temp = Image.open(path)
         img = np.array(temp)
         height, width, channel = img.shape
-        if channel == 4:
-            img = img[:, :, :3]
+        #if channel == 4:
+        #    img = img[:, :, :1]
+        img = img[:, :, :1]
         example = tf.train.Example(
             features=tf.train.Features(
                 feature={
@@ -79,10 +80,10 @@ def read_and_decode(filename_queue, batch_size):
     width = tf.cast(features['width'], tf.int32)
     channel = tf.cast(features['channel'], tf.int32)
 
-    image_shape = tf.stack([144, 256, 3])
+    image_shape = tf.stack([144, 256, 1])
     image = tf.reshape(image, image_shape)
     # image = tf.image.resize_image_with_crop_or_pad(image, 33, 59)
-
+    image = tf.image.resize_images(image, [32, 64])
     # image_size_const = tf.constant([33, 59, 3], dtype=tf.int32)
 
     images = tf.train.shuffle_batch(
@@ -114,12 +115,12 @@ def main(_):
         for i in range(3):
             print(i)
             img = sess.run(images)
-            print(img[0, :, :, :].shape)
+            print(img[0, :, :].shape)
 
             print('current batch')
-            plt.imshow(img[0, :, :, :])
+            plt.imshow(img[0, :, :, :].reshape(32, 64), cmap='Greys_r')
             plt.show()
-            plt.imshow(img[1, :, :, :])
+            plt.imshow(img[1, :, :, :].reshape(32, 64), cmap='Greys_r')
             plt.show()
 
         coord.request_stop()

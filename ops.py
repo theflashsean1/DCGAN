@@ -59,11 +59,11 @@ def batch_norm(input_batch, is_training, epsilon=1e-5, decay=0.9, name_scope='bn
         scope=name_scope,
         reuse=reuse,
         updates_collections=None,
-        is_training=is_training
+        is_training=is_training,
     )
 
 
-def leaky_relu(input_, slope):
+def leaky_relu(input_, slope=0.2):
     return tf.maximum(slope*input_, input_)
 
 """

@@ -22,6 +22,20 @@ class Generator:
             print(h_heights)
             print(h_widths)
             z_ = ops.fc(z, self._ngf*h_heights[0]*h_widths[0], reuse=self._reuse, name='g_fc0')
+            """
+            h0 = tf.nn.relu(
+                tf.reshape(z_, [-1, h_heights[0], h_widths[0], self._ngf]),
+            )
+            h1 = tf.nn.relu(
+                ops.deconv2d(h0, int(self._ngf / 2), reuse=self._reuse, name='g_conv1'),
+            )
+            h2 = tf.nn.relu(
+                ops.deconv2d(h1, int(self._ngf / 4), reuse=self._reuse, name='g_conv2'),
+            )
+            h3 = tf.nn.relu(
+                ops.deconv2d(h2, int(self._ngf / 8), reuse=self._reuse, name='g_conv3'),
+            )
+            """
             h0 = tf.nn.relu(
                 ops.batch_norm(
                     tf.reshape(z_, [-1, h_heights[0], h_widths[0], self._ngf]),
@@ -64,4 +78,5 @@ class Generator:
     def variables(self):
         if not self._variables:
             self._variables = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=self._name)
+        # print(1)
         return self._variables

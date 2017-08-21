@@ -5,23 +5,25 @@ from d_model import Discriminator
 
 class DCGAN(object):
     def __init__(self,
-                 batch_size=50,
+                 ngf=512,
+                 ndf=64,
+                 batch_size=64,
                  z_dim=100,
+                 g_learning_rate=2e-4,
+                 d_learning_rate=2e-4,
                  input_img_height=33,
                  input_img_width=59,
                  output_img_height=33,
                  output_img_width=59,
                  num_channels=3,
-                 ngf=512,
-                 ndf=64,
                  is_training=True,
-                 g_learning_rate=2e-4,
-                 d_learning_rate=2e-4
+                 beta1=0.5
                  ):
         # Private member vars
         self._batch_size = batch_size
         self._g_learning_rate = g_learning_rate
         self._d_learning_rate = d_learning_rate
+        self._beta1 = beta1
         self._z = tf.placeholder(tf.float32, [batch_size, z_dim], name='z')
         self._input_imgs = tf.placeholder(
             tf.float32,
@@ -50,6 +52,8 @@ class DCGAN(object):
 
         self._d_optimizer = None
         self._g_optimizer = None
+        self._d_fake_optimizer = None
+        self._d_real_optimizer = None
 
         self._summary_op = None
 
@@ -124,7 +128,7 @@ class DCGAN(object):
     @property
     def g_optimizer(self):
         if self._g_optimizer is None:
-            self._g_optimizer = tf.train.AdamOptimizer(self._g_learning_rate).minimize(
+            self._g_optimizer = tf.train.AdamOptimizer(self._g_learning_rate, beta1=self._beta1).minimize(
                 loss=self.g_loss,
                 var_list=self._G.variables
             )
@@ -133,7 +137,7 @@ class DCGAN(object):
     @property
     def d_optimizer(self):
         if self._d_optimizer is None:
-            self._d_optimizer = tf.train.AdamOptimizer(self._d_learning_rate).minimize(
+            self._d_optimizer = tf.train.AdamOptimizer(self._d_learning_rate, beta1=self._beta1).minimize(
                 loss=self.d_loss_real + self.d_loss_fake,
                 var_list=self._D.variables
             )

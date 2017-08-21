@@ -5,19 +5,18 @@ from d_model import Discriminator
 
 class DCGAN(object):
     def __init__(self,
-                 ngf=512,
-                 ndf=64,
-                 batch_size=64,
-                 z_dim=100,
-                 g_learning_rate=2e-4,
-                 d_learning_rate=2e-4,
-                 input_img_height=33,
-                 input_img_width=59,
-                 output_img_height=33,
-                 output_img_width=59,
-                 num_channels=3,
-                 is_training=True,
-                 beta1=0.5
+                 ngf,
+                 ndf,
+                 batch_size,
+                 z_dim,
+                 g_learning_rate,
+                 d_learning_rate,
+                 input_img_height,
+                 input_img_width,
+                 output_img_height,
+                 output_img_width,
+                 num_channels,
+                 beta1
                  ):
         # Private member vars
         self._batch_size = batch_size

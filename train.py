@@ -19,7 +19,7 @@ tf.flags.DEFINE_integer('plot_num_rows', 8, 'number of rows displayed in plot')
 tf.flags.DEFINE_string('image_dims', 'celebrity', 'image_size_type: default: large')
 tf.flags.DEFINE_integer('z_dim', 100, 'z_dim: default:100')
 tf.flags.DEFINE_float('g_learning_rate', 2e-4, 'learning rate: default:2e-4')
-tf.flags.DEFINE_float('d_learning_rate', 2e-4, 'learning rate: default:2e-4')
+tf.flags.DEFINE_float('d_learning_rate', 2e-5, 'learning rate: default:2e-4')
 tf.flags.DEFINE_float('beta1', 0.5, "Momentum term of Adam")
 tf.flags.DEFINE_integer('ngf', 512, 'number of gen filters in first conv layer')
 tf.flags.DEFINE_integer('ndf', 64, 'number of dis filters in first conv layer')
@@ -132,7 +132,7 @@ def main(_):
                 """"""
                 _, _, _, g_loss_val, d_loss_real_val, d_loss_fake_val, d_out_real_val, d_out_fake_val, summary = \
                 sess.run(
-                    fetches=[d_optimizer, g_optimizer, g_optimizer, g_loss, d_loss_real, d_loss_fake, d_out_real, d_out_fake, summary_op],
+                    fetches=[g_optimizer, g_optimizer, d_optimizer, g_loss, d_loss_real, d_loss_fake, d_out_real, d_out_fake, summary_op],
                     feed_dict={
                         dcgan.input_placeholder: batch_images,
                         dcgan.z_placeholder: z

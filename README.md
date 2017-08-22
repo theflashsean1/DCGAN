@@ -1,5 +1,5 @@
 # DCGAN - Tensorflow
-Generate new DOTA2 heroes 
+Deep Convolutional GAN, Generate new DOTA2 heroes 
 
 Test Done:
 1. Generate 48x80 dimension fake Dota2 heroes images.

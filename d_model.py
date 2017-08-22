@@ -22,6 +22,7 @@ class Discriminator:
             h0 = tf.nn.relu(
                 ops.conv2d(input_, self._ndf, reuse=self._reuse, name='d_conv0')  # (64, 32, 32, 64)
             )
+            """
             h1 = tf.nn.relu(
                 ops.conv2d(h0, self._ndf * 2, reuse=self._reuse, name='d_conv1'),  # (64, 16, 16, 128)
             )
@@ -57,12 +58,12 @@ class Discriminator:
                     name_scope='d_bn3'
                 )
             )
-            """
             h3_shape = h3.get_shape().as_list()
             h3_ = tf.reshape(h3, [h3_shape[0], self._ndf*8*h_heights[-1]*h_widths[-1]])  # (64, 4*4*512)
-            h4 = tf.nn.sigmoid(
-                ops.fc(h3_, 1, reuse=self._reuse, name='d_fc4')  # (64, 1)
-            )
+            # h4 = tf.nn.sigmoid(
+            #    ops.fc(h3_, 1, reuse=self._reuse, name='d_fc4')  # (64, 1)
+            # )
+            h4 = ops.fc(h3_, 1, reuse=self._reuse, name='d_fc4')
         self._reuse = True
         return h4
 

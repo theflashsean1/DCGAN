@@ -8,13 +8,13 @@ import matplotlib.pyplot as plt
 
 FLAGS = tf.flags.FLAGS
 
-tf.flags.DEFINE_string('raw_data_dir', 'data/celebA', 'heroes image dir')
-tf.flags.DEFINE_string('tfrecord_data_dir', 'celebA_data', 'Output tfrecord files')
+tf.flags.DEFINE_string('raw_data_dir', 'dota2heroes/205x115', 'heroes image dir')
+tf.flags.DEFINE_string('tfrecord_data_dir', 'dota2_data', 'Output tfrecord files')
 tf.flags.DEFINE_integer('max_num_images', 100000, 'maximum number of images to store')
-tf.flags.DEFINE_integer('img_height', 64, 'image height')
-tf.flags.DEFINE_integer('img_width', 64, 'image_width')
+tf.flags.DEFINE_integer('img_height', 48, 'image height')
+tf.flags.DEFINE_integer('img_width', 80, 'image_width')
 tf.flags.DEFINE_integer('img_channel', 3, 'image_channel')
-tf.flags.DEFINE_string('record_name', 'celebA_images', 'celebA record name')
+tf.flags.DEFINE_string('record_name', 'heroes_images', 'celebA record name')
 
 
 def read_images_dir(input_dir, max_num_images):
@@ -45,7 +45,7 @@ def convert_to_tfrecord(image_path_generator, output_dir, record_name, img_heigh
     writer = tf.python_io.TFRecordWriter(record_path)
     i = 0
     for path in image_path_generator:
-        temp = Image.open(path).resize([img_height, img_width], Image.ANTIALIAS)
+        temp = Image.open(path).resize([img_width, img_height], Image.ANTIALIAS)
         img = np.array(temp)
         height, width, channel = img.shape
         img = img[:, :, :img_channel]
@@ -64,8 +64,7 @@ def convert_to_tfrecord(image_path_generator, output_dir, record_name, img_heigh
 
 
 def read_and_decode(filename_queue, batch_size,
-                    height, width, channel, min_after_dequeue=10,
-                    resize_height=None, resize_width=None):
+                    height, width, channel, min_after_dequeue=10):
     reader = tf.TFRecordReader()
     _, serialized_example = reader.read(filename_queue)
 
@@ -102,12 +101,12 @@ def read_and_decode(filename_queue, batch_size,
 
 
 def main(_):
-    #tfrecord_path = convert_to_tfrecord(read_images_dir(FLAGS.raw_data_dir, max_num_images=FLAGS.max_num_images),
-    #                                    FLAGS.tfrecord_data_dir, record_name='celebA_images', img_height=FLAGS.img_height,
-    #                                    img_width=FLAGS.img_width, img_channel=FLAGS.img_channel)
-    #print(tfrecord_path)
-    tfrecord_path = "celebA_data/celebA_images.tfrecords"
-    #exit()
+    tfrecord_path = convert_to_tfrecord(read_images_dir(FLAGS.raw_data_dir, max_num_images=FLAGS.max_num_images),
+                                        FLAGS.tfrecord_data_dir, record_name=FLAGS.record_name,
+                                        img_height=FLAGS.img_height, img_width=FLAGS.img_width, img_channel=FLAGS.img_channel)
+    print(tfrecord_path)
+    #tfrecord_path = "celebA_data/celebA_images.tfrecords"
+    exit()
     filename_queue = tf.train.string_input_producer(
         string_tensor=[tfrecord_path], num_epochs=1
     )

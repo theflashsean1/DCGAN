@@ -14,33 +14,27 @@ from utils import *
 
 FLAGS = tf.flags.FLAGS
 
-tf.flags.DEFINE_integer('batch_size', 64, 'batch_size: default:100')
-tf.flags.DEFINE_integer('plot_num_rows', 8, 'number of rows displayed in plot')
-tf.flags.DEFINE_string('image_dims', 'celebrity', 'image_size_type: default: large')
+tf.flags.DEFINE_integer('batch_size', 49, 'batch_size: default:100')
+tf.flags.DEFINE_integer('plot_num_rows', 7, 'number of rows displayed in plot')
+tf.flags.DEFINE_string('image_dims', 'dota_resized', 'image_size_type: default: large')
 tf.flags.DEFINE_integer('z_dim', 100, 'z_dim: default:100')
 tf.flags.DEFINE_float('g_learning_rate', 2e-4, 'learning rate: default:2e-4')
-tf.flags.DEFINE_float('d_learning_rate', 2e-5, 'learning rate: default:2e-4')
+tf.flags.DEFINE_float('d_learning_rate', 2e-4, 'learning rate: default:2e-4')
 tf.flags.DEFINE_float('beta1', 0.5, "Momentum term of Adam")
 tf.flags.DEFINE_integer('ngf', 512, 'number of gen filters in first conv layer')
 tf.flags.DEFINE_integer('ndf', 64, 'number of dis filters in first conv layer')
-tf.flags.DEFINE_string('data_path', 'celebA_data/celebA_images.tfrecords', 'Directory for storing input data')
+tf.flags.DEFINE_string('data_path', 'dota2_data/heroes_images.tfrecords', 'Directory for storing input data')
 tf.flags.DEFINE_string('load_model', None, 'folder of saved model that you wish to continue training '
                                            '(e.g. 20170602-1936), default=None')
-tf.flags.DEFINE_integer('sample_interval', 100, 'plot intermediate results')
+tf.flags.DEFINE_integer('sample_interval', 50, 'plot intermediate results')
 
 IMG_SIZE_MAP = {
     'dota_small': (33, 59, 1),
     'dota_medium': (115, 205, 1),
     'dota_large': (144, 256, 1),
+    'dota_resized': (48, 80, 3),
     'celebrity': (64, 64, 3),
     'mnist': (28, 28, 1)
-}
-IMG_RESIZE_MAP={
-    'dota_small': (None, None),
-    'dota_medium': (None, None),
-    'dota_large': (None, None),
-    'celebrity': (None, None),
-    'mnist': (32, 32)
 }
 
 
@@ -64,14 +58,9 @@ def main(_):
         filename_queue = tf.train.string_input_producer(
             string_tensor=[FLAGS.data_path]
         )
-        # input_images = read_and_decode(filename_queue, batch_size=FLAGS.batch_size,
-        #                               height=img_height, width=img_width, channel=img_channel,
-        #                               )
-
-        # if resize_height:
-        #    img_height = resize_height
-        # if resize_width:
-        #    img_width = resize_width
+        input_images = read_and_decode(filename_queue, batch_size=FLAGS.batch_size,
+                                       height=img_height, width=img_width, channel=img_channel,
+                                       )
 
         dcgan = DCGAN(
             batch_size=FLAGS.batch_size,
@@ -112,27 +101,15 @@ def main(_):
 
         coord = tf.train.Coordinator()
         threads = tf.train.start_queue_runners(coord=coord, sess=sess)
+        z_sample = np.random.uniform(-1, 1, [FLAGS.batch_size, FLAGS.z_dim]).astype(np.float32)
         try:
             while not coord.should_stop():
                 z = np.random.uniform(-1, 1, [FLAGS.batch_size, FLAGS.z_dim]).astype(np.float32)
                 print(z.shape)
-                # batch_images = sess.run(input_images)
-                """"""
-                data = glob(os.path.join(
-                    "data", "celebA", "*.jpg"))
-                batch_files = data[step * FLAGS.batch_size:(step + 1) * FLAGS.batch_size]
-                batch_images = [
-                    get_image(batch_file,
-                              input_height=108,
-                              input_width=108,
-                              resize_height=64,
-                              resize_width=64,
-                              crop=True,
-                              grayscale=False) for batch_file in batch_files]
-                """"""
+                batch_images = sess.run(input_images)
                 _, _, _, g_loss_val, d_loss_real_val, d_loss_fake_val, d_out_real_val, d_out_fake_val, summary = \
                 sess.run(
-                    fetches=[g_optimizer, g_optimizer, d_optimizer, g_loss, d_loss_real, d_loss_fake, d_out_real, d_out_fake, summary_op],
+                    fetches=[d_optimizer, g_optimizer, g_optimizer, g_loss, d_loss_real, d_loss_fake, d_out_real, d_out_fake, summary_op],
                     feed_dict={
                         dcgan.input_placeholder: batch_images,
                         dcgan.z_placeholder: z
@@ -144,32 +121,21 @@ def main(_):
                     step, d_loss_fake_val, d_loss_real_val, g_loss_val))
 
                 if step % FLAGS.sample_interval == 0:
-                    """
-                    fig = _plot(z, 1, FLAGS.z_dim)
-                    plt.savefig('{}/z_{}.png'.format(checkpoints_dir, str(step).zfill(3)), bbox_inches='tight')
-                    plt.close(fig)
-                    """
-                    plt.imshow(batch_images[0])
-                    plt.show()
                     fig = _plot(batch_images, plot_num_rows, plot_num_cols, img_height, img_width, img_channel)
                     plt.savefig('{}/input_{}.png'.format(checkpoints_dir, str(step).zfill(3)), bbox_inches='tight')
                     plt.close(fig)
                     print('----------Step %d: ----------' % step)
-                    print('D_real_out: {}'.format(d_out_real_val))
-                    print('D_fake_out: {}'.format(d_out_fake_val))
                     print('G_loss: {}'.format(g_loss_val))
                     print('D(G(Z))_loss: {}'.format(d_loss_fake_val))
-                    print('D(x)_LOSS: {}'.format(d_loss_real_val))
+                    print('D(x)_loss: {}'.format(d_loss_real_val))
                     print('----------Sample img---------')
 
                     g_z = sess.run(
                         fetches=generated_imgs,
                         feed_dict={
-                            dcgan.z_placeholder: z
+                            dcgan.z_placeholder: z_sample
                         }
                     )
-                    plt.imshow(g_z[0])
-                    plt.show()
                     fig = _plot(g_z, plot_num_rows, plot_num_cols, img_height, img_width, img_channel)
                     plt.savefig('{}/{}.png'.format(checkpoints_dir, str(step).zfill(3)), bbox_inches='tight')
                     plt.close(fig)
